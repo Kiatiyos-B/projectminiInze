@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ดูไฟล์ทั้งหมด</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(to right, #fff, #fdf2ef);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding-top: 40px;
+    }
+    .container {
+      background-color: #fff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 700px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #e5391d;
+    }
+    .file-item {
+      background-color: #fdf2ef;
+      padding: 16px 20px;
+      margin-bottom: 15px;
+      border-left: 6px solid #e5391d;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .file-item:hover {
+      background-color: #fceae5;
+    }
+    .file-item p {
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+    .file-item a {
+      color: #e5391d;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .file-item a:hover {
+      text-decoration: underline;
+    }
+    button {
+      background-color: #e5391d;
+      color: white;
+      border: none;
+      padding: 12px;
+      margin-top: 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #c72f14;
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      width: 150px;
+    }
+    .no-files {
+      text-align: center;
+      color: #999;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    #search-input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .pagination {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .pagination button {
+      margin: 0 5px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .pagination button.active {
+      background-color: #e5391d;
+      color: white;
+    }
+    .pagination button:not(.active) {
+      background-color: #f0f0f0;
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="inzy-logo.png" alt="Logo" class="logo">
+    <h2>📂 ไฟล์ทั้งหมดในระบบ</h2>
+    <input type="text" id="search-input" placeholder="🔍 ค้นหาชื่อรุ่น..." oninput="filterFiles()">
+    <div id="file-list-container"></div>
+    <button onclick="window.location.href='/'" style="width:100%; margin-top:30px;">⬅ กลับไปยังหน้าแรก</button>
+  </div>
+
+  <script>
+    let allFiles = [];
+    let filteredFiles = [];
+    let currentPage = 1;
+    const filesPerPage = 5;
+
+    fetch('/view-files')
+      .then(response => response.json())
+      .then(files => {
+        allFiles = files;
+        filteredFiles = files;
+        renderFiles();
+        renderPagination();
+      })
+      .catch(err => {
+        console.error('ไม่สามารถดึงข้อมูลไฟล์ได้', err);
+        document.getElementById('file-list-container').innerHTML =
+          '<p class="no-files">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+      });
+
+    function renderFiles() {
+      const container = document.getElementById('file-list-container');
+      container.innerHTML = '';
+
+      const start = (currentPage - 1) * filesPerPage;
+      const end = start + filesPerPage;
+      const filesToShow = filteredFiles.slice(start, end);
+
+      if (filesToShow.length > 0) {
+        filesToShow.forEach(file => {
+          const div = document.createElement('div');
+          div.className = 'file-item';
+          div.innerHTML = `
+            <p><strong>📄 ชื่อรุ่น:</strong> ${file.name}</p>
+            <p><strong>📁 ไฟล์:</strong>
+              <a href="/download/${file.catalog}" download>${file.catalog}</a>
+            </p>
+            <p><strong>📝 หมายเหตุ:</strong> ${file.commet2 || '-'}</p>
+          `;
+          container.appendChild(div);
+        });
+      } else {
+        container.innerHTML = '<p class="no-files">ไม่พบไฟล์ที่ค้นหา</p>';
+      }
+    }
+
+    function renderPagination() {
+      const container = document.getElementById('file-list-container');
+      const paginationDiv = document.createElement('div');
+      paginationDiv.className = 'pagination';
+
+      const totalPages = Math.ceil(filteredFiles.length / filesPerPage);
+
+      if (totalPages <= 1) return; // ถ้ามีแค่หน้าเดียวไม่ต้องทำอะไร
+
+      for (let i = 1; i <= totalPages; i++) {
+        const button = document.createElement('button');
+        button.textContent = i;
+        button.className = (i === currentPage) ? 'active' : '';
+
+        button.onclick = () => {
+          currentPage = i;
+          renderFiles();
+          renderPagination();
+        };
+
+        paginationDiv.appendChild(button);
+      }
+
+      container.appendChild(paginationDiv);
+    }
+
+    function filterFiles() {
+      const keyword = document.getElementById('search-input').value.toLowerCase();
+      filteredFiles = allFiles.filter(file => file.name.toLowerCase().includes(keyword));
+      currentPage = 1;
+      renderFiles();
+      renderPagination();
+    }
+  </script>
+</body>
+</html>
